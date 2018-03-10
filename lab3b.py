@@ -54,6 +54,7 @@ def block_consistency(csvFile):
                 if (blockNum != 0):
                     if (blockNum < 0 or blockNum > (totalBlocks-1)):
                         print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                        continue
                     if (blockNum < endOfInodeTable):
                         print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                     newInodeInfo = inodeInfo()
@@ -72,28 +73,30 @@ def block_consistency(csvFile):
                     print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                 if (row[2] == "3"):
                     print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-            if (blockNum < endOfInodeTable):
+                continue
+            elif (blockNum < endOfInodeTable):
                 if (row[2] == "1"):
                     print("RESERVED INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                 if (row[2] == "2"):
                     print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                 if (row[2] == "3"):
                     print("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-            indir = int(row[2])
-            if (indir == 1):
-                offset = row[3]
-            if (indir ==  2):
-                offset = 12+256
-            if (indir == 3):
-                offset = 12 + 256 + 256
-            newInodeInfo = inodeInfo()
-            newInodeInfo.inode = int(row[1])
-            newInodeInfo.indirection = indir
-            newInodeInfo.offsets = offset
-            blockNum = int(row[5])
-            if (allocatedBlocks.has_key(blockNum) == False):
-                allocatedBlocks[blockNum] = [newInodeInfo]
-            allocatedBlocks[blockNum].append(newInodeInfo)
+            else:
+                indir = int(row[2])
+                if (indir == 1):
+                    offset = row[3]
+                if (indir ==  2):
+                    offset = 12+256
+                if (indir == 3):
+                    offset = 12 + 256 + 256
+                newInodeInfo = inodeInfo()
+                newInodeInfo.inode = int(row[1])
+                newInodeInfo.indirection = indir
+                newInodeInfo.offsets = offset
+                blockNum = int(row[5])
+                if (allocatedBlocks.has_key(blockNum) == False):
+                    allocatedBlocks[blockNum] = [newInodeInfo]
+                allocatedBlocks[blockNum].append(newInodeInfo)
                  
 
 def main():
