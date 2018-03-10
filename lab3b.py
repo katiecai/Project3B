@@ -59,31 +59,22 @@ def block_consistency(csvFile):
                     allocatedBlocks[int(row[i])].offsets.append(12-i)
                     allocatedBlocks[int(row[i])].indirection.append(0)
         if (row[0] == "INDIRECT"):
-                if (allocatedBlocks.has_key(int(row[4])) == False):
-                    newInodeInfo = inodeInfo()
-                    newInodeInfo.inode = int(row[1])
-                    indir = int(row[2])
-                    if (indir == 1):
-                        offset = row[3]
-                    if (indir ==  2):
-                        offset = 12+256
-                    if (indir == 3):
-                        offset = 12 + 256 + 256
-                    newInodeInfo.indirection.append(indir)
-                    newInodeInfo.offsets.append(offset)
-                    allocatedBlocks[int(row[4])] = newInodeInfo
-                else:
-                    if (i == 24):
-                        indir = 1
-                        offset = row[3]
-                    if (i == 25):
-                        indir = 2
-                        offset = 12+256
-                    if (i == 26):
-                        indir = 3
-                        offset = 12 + 256 + 256
-                    allocatedBlocks[int(row[4])].indirection.append(indir)
-                    allocatedBlocks[int(row[4])].offsets.append(offset)
+            indir = int(row[2])
+            if (indir == 1):
+                offset = row[3]
+            if (indir ==  2):
+                offset = 12+256
+            if (indir == 3):
+                offset = 12 + 256 + 256
+            if (allocatedBlocks.has_key(int(row[4])) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.inode = int(row[1])
+                newInodeInfo.indirection.append(indir)
+                newInodeInfo.offsets.append(offset)
+                allocatedBlocks[int(row[4])] = newInodeInfo
+            else:
+                allocatedBlocks[int(row[4])].indirection.append(indir)
+                allocatedBlocks[int(row[4])].offsets.append(offset)
 
         
 
