@@ -1,10 +1,15 @@
 #!/usr/bin/python
 
+
+#get the information
+#make the data structure
+#analyze data structure
+
 import csv
 import sys
 
 def main():
-    if sys.argc != 2:
+    if len(sys.argv) != 2:
         print("Wrong number of arguments")
         sys.exit()
     
@@ -16,3 +21,8 @@ def main():
         for row in reader:
             if (row[0] == "INDIRECT"):
                 print row        
+            if (row[0] == "INODE"):
+                print row
+
+if __name__ == "__main__":
+    main()
