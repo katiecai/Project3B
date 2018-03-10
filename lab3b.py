@@ -49,12 +49,20 @@ def block_consistency(csvFile):
         if (row[0] == "BFREE"):
             freeBlocks.add(int(row[1]))
         if (row[0] == "INODE"):
-            for i in range (12, 24):
+            offset = 0
+            for i in range (12, 27):
                 blockNum = int(row[i])
                 if (blockNum != 0):
                     if (blockNum < 0 or blockNum > (totalBlocks-1)):
-                        print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-                    elif (blockNum < endOfInodeTable):
+                        if (i < 24):
+                            print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset))
+                        if (i == 24):
+                            print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12))
+                        if (i == 25):
+                            print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12 + 256))
+                        if (i == 26):
+                            print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12 + 256 + 256))
+                    if (blockNum < endOfInodeTable):
                         print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                     else:
                         newInodeInfo = inodeInfo()
@@ -63,7 +71,9 @@ def block_consistency(csvFile):
                         newInodeInfo.offsets = 12-i
                         if (allocatedBlocks.has_key(blockNum) == False):
                             allocatedBlocks[blockNum] = [newInodeInfo]
-                        allocatedBlocks[blockNum].append(newInodeInfo)
+                        else:
+                            allocatedBlocks[blockNum].append(newInodeInfo)
+                    offset = offset + 1
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
@@ -96,8 +106,23 @@ def block_consistency(csvFile):
                 blockNum = int(row[5])
                 if (allocatedBlocks.has_key(blockNum) == False):
                     allocatedBlocks[blockNum] = [newInodeInfo]
-                allocatedBlocks[blockNum].append(newInodeInfo)
+                else:
+                    allocatedBlocks[blockNum].append(newInodeInfo)
                  
+    #checking for duplicates
+    for i in range(startOfDataBlocks, totalBlocks):
+        if (allocatedBlocks.has_key(i) == True):
+            if (len(allocatedBlocks[i]) > 1):
+                for j in range(len(allocatedBlocks[i])):
+                    print "DUPLICATE"
+                    indir = allocatedBlocks[i][j].indirection
+                    if (indir == 1):
+                        print "INDIRECT"
+                    if (indir == 2):
+                        print "DOUBLE INDIRECT"
+                    if (indir == 3):
+                        print "TRIPLE INDIRECT"
+                    print("BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
 
 def main():
     if len(sys.argv) != 2:
