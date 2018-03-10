@@ -19,12 +19,12 @@ def block_consistency(csvFile):
     inodeSize = -1
     totalBlocks = -1
     totalInodes = -1
-    blockSize = -1;
+    blockSize = -1
 
     bitMap = -1
     inodeMap = -1
-    inodeTable = -1;
-    endOfInodeTable = -1;
+    inodeTable = -1
+    endOfInodeTable = -1
 
     for row in csvFile:
         if (row[0] == "SUPERBLOCK"):
@@ -61,16 +61,36 @@ def block_consistency(csvFile):
                         if (i == 25):
                             print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12 + 256))
                         if (i == 26):
-                            print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12 + 256 + 256))
-                    if (blockNum < endOfInodeTable):
-                        print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                            print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset + 12 + 256* 256 + 256))
+                    if (blockNum < startOfDataBlocks):
+                        if (i < 24):
+                            print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset))
+                        if (i == 24):
+                            print ("RESERVED INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12))
+                        if (i == 25):
+                            print ("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256))
+                        if (i == 26):
+                            print ("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256*256 + 256))
+
                     else:
                         newInodeInfo = inodeInfo()
                         newInodeInfo.inode = int(row[1])
-                        newInodeInfo.indirection = 0
-                        newInodeInfo.offsets = 12-i
+                        if (i < 24):
+                            indir = 0
+                            offset_to_add = offset
+                        if (i == 24):
+                            indir = 1
+                            offset_to_add = offset + 12
+                        if (i == 25):
+                            indir = 2
+                            offset_to_add = offset + 12 + 256
+                        if (i == 26):
+                            indir = 3
+                            offset_to_add = offset + 12 + 256 + 256 * 256
+                        newInodeInfo.indirection = indir
+                        newInodeInfo.offsets = offset_to_add
                         if (allocatedBlocks.has_key(blockNum) == False):
-                            allocatedBlocks[blockNum] = [newInodeInfo]
+                            allocatedBlocks[blockNum] = [newInodeInfo]                            
                         else:
                             allocatedBlocks[blockNum].append(newInodeInfo)
                     offset = offset + 1
@@ -78,27 +98,27 @@ def block_consistency(csvFile):
             blockNum = int(row[4])
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
                 if (row[2] == "1"):
-                    print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
                 if (row[2] == "2"):
-                    print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
                 if (row[2] == "3"):
-                    print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
                 continue
             elif (blockNum < endOfInodeTable):
                 if (row[2] == "1"):
-                    print("RESERVED INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("RESERVED INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
                 if (row[2] == "2"):
-                    print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
                 if (row[2] == "3"):
-                    print("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    print("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
             else:
                 indir = int(row[2])
                 if (indir == 1):
                     offset = row[3]
                 if (indir ==  2):
-                    offset = 12+256
+                    offset = row[3]
                 if (indir == 3):
-                    offset = 12 + 256 + 256
+                    offset = row[3]
                 newInodeInfo = inodeInfo()
                 newInodeInfo.inode = int(row[1])
                 newInodeInfo.indirection = indir
@@ -110,27 +130,23 @@ def block_consistency(csvFile):
                     allocatedBlocks[blockNum].append(newInodeInfo)
 
     # allocated and unreferenced blocks
-    for i in range(totalBlocks):
-        if i in freeBlocks and allocatedBlocks.has_key(i):
-            print("ALLOCATED BLOCK {} ON FREELIST".format(i);
-        if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
-            print("UNREFERENCED BLOCK {}".format(i));
-            
-                 
-    #checking for duplicates
     for i in range(startOfDataBlocks, totalBlocks):
+        if i in freeBlocks and allocatedBlocks.has_key(i):
+            print("ALLOCATED BLOCK {} ON FREELIST".format(i))
+        if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
+            print("UNREFERENCED BLOCK {}".format(i)) 
         if (allocatedBlocks.has_key(i) == True):
             if (len(allocatedBlocks[i]) > 1):
                 for j in range(len(allocatedBlocks[i])):
-                    print "DUPLICATE"
                     indir = allocatedBlocks[i][j].indirection
+                    if (indir == 0):
+                        print("DUPLICATE BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
                     if (indir == 1):
-                        print "INDIRECT"
+                        print("DUPLICATE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
                     if (indir == 2):
-                        print "DOUBLE INDIRECT"
+                        print("DUPLICATE DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
                     if (indir == 3):
-                        print "TRIPLE INDIRECT"
-                    print("BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
+                        print("DUPLICATE TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
 
 def main():
     if len(sys.argv) != 2:
