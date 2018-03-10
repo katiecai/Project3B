@@ -8,7 +8,49 @@
 import csv
 import sys
 
+class inodeInfo:
+    offsets = []
+    inode = -1
+    indirection = []
+
 def block_consistency(csvFile):
+    freeBlocks = set([])
+    #key is the block number                                                                                                                                                
+    #value is a list of inodeInfo classes                                                                                                                                   
+    allocatedBlocks = {}
+
+    for row in csvFile:
+        if (row[0] == "BFREE"):
+            freeBlocks.add(int(row[1]))
+        if (row[0] == "INODE"):
+            for i in range (12, 24):
+                if (allocatedBlocks.has_key(int(row[i])) == False):
+                    newInodeInfo = inodeInfo()
+                    newInodeInfo.inode = int(row[1])
+                    newInodeInfo.indirection.append(0)
+                    newInodeInfo.offsets.append(12-i)
+                    allocatedBlocks[int(row[i])] = newInodeInfo
+                else:
+                    allocatedBlocks[int(row[i])].offsets.append(12-i)
+                    allocatedBlocks[int(row[i])].indirection.append(0)
+        if (row[0] == "INDIRECT"):
+            indir = int(row[2])
+            if (indir == 1):
+                offset = row[3]
+            if (indir ==  2):
+                offset = 12+256
+            if (indir == 3):
+                offset = 12 + 256 + 256
+            if (allocatedBlocks.has_key(int(row[4])) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.inode = int(row[1])
+                newInodeInfo.indirection.append(indir)
+                newInodeInfo.offsets.append(offset)
+                allocatedBlocks[int(row[4])] = newInodeInfo
+            else:
+                allocatedBlocks[int(row[4])].indirection.append(indir)
+                allocatedBlocks[int(row[4])].offsets.append(offset)
+
     #first determine legal blocks
     inodeSize = -1
     totalBlocks = -1
@@ -63,6 +105,7 @@ def block_consistency(csvFile):
                 if (row[2] == "3"):
                     print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                 
+
 def main():
     if len(sys.argv) != 2:
         print("Wrong number of arguments")
