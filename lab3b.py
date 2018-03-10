@@ -59,6 +59,7 @@ def block_consistency(csvFile):
                     allocatedBlocks[int(row[i])].offsets.append(12-i)
                     allocatedBlocks[int(row[i])].indirection.append(0)
         if (row[0] == "INDIRECT"):
+            print row
             indir = int(row[2])
             if (indir == 1):
                 offset = row[3]
