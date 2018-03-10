@@ -54,15 +54,15 @@ def block_consistency(csvFile):
                 if (blockNum != 0):
                     if (blockNum < 0 or blockNum > (totalBlocks-1)):
                         print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-                        continue
-                    if (blockNum < endOfInodeTable):
+                    elif (blockNum < endOfInodeTable):
                         print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-                    newInodeInfo = inodeInfo()
-                    newInodeInfo.inode = int(row[1])
-                    newInodeInfo.indirection = 0
-                    newInodeInfo.offsets = 12-i
-                    if (allocatedBlocks.has_key(blockNum) == False):
-                        allocatedBlocks[blockNum] = [newInodeInfo]
+                    else:
+                        newInodeInfo = inodeInfo()
+                        newInodeInfo.inode = int(row[1])
+                        newInodeInfo.indirection = 0
+                        newInodeInfo.offsets = 12-i
+                        if (allocatedBlocks.has_key(blockNum) == False):
+                            allocatedBlocks[blockNum] = [newInodeInfo]
                         allocatedBlocks[blockNum].append(newInodeInfo)
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
