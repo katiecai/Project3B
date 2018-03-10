@@ -31,8 +31,38 @@ def block_consistency(csvFile):
             inodeMap = int(row[7])
             inodeTable = int(row[8])
 
-    endOfInodeTable = inodeTable + (totalInodes * inodeSize / blockSize)
+    startOfDataBlocks = inodeTable + (totalInodes * inodeSize / blockSize)
+    print("total blocks: {}".format(totalBlocks))
 
+    # find invalid and reserved blocks
+    for row in csvFile:
+        if (row[0] == "INODE"):
+            for i in range (12, 23):
+                blockNum = int(row[i])
+                if (blockNum != 0):
+                    print(blockNum)
+                    if (blockNum < 0 or blockNum > (totalBlocks-1)):
+                        print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    if (blockNum < endOfInodeTable):
+                        print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+        if (row[0] == "INDIRECT"):
+            blockNum = int(row[4])
+            print(blockNum)
+            if (blockNum < 0 or blockNum > (totalBlocks-1)):
+                if (row[2] == "1"):
+                    print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                if (row[2] == "2"):
+                    print("INVALID DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                if (row[2] == "3"):
+                    print("INVALID TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+            if (blockNum < endOfInodeTable):
+                if (row[2] == "1"):
+                    print("RESERVED INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                if (row[2] == "2"):
+                    print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                if (row[2] == "3"):
+                    print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                
 def main():
     if len(sys.argv) != 2:
         print("Wrong number of arguments")
