@@ -1,13 +1,19 @@
+<<<<<<< HEAD
 #!/usr/bin/python
 
 import csv
+import sys
 
-if __name__ == "__main__":
-    csvFile=[]
+def main():
+    if sys.argc != 2:
+        print("Wrong number of arguments")
+        sys.exit()
+    
+    csvFile = []
     rowArray = []
 
-    with open("trivial.csv", "rb") as csvfile:
+    with open(sys.argv[1], 'r') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if (row[0] == "INDIRECT"):
-                print row
+                print row        
