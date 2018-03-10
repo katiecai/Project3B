@@ -9,48 +9,11 @@ import csv
 import sys
 
 class inodeInfo:
-    offsets = []
+    offsets = -1
     inode = -1
-    indirection = []
+    indirection = -1
 
 def block_consistency(csvFile):
-    freeBlocks = set([])
-    #key is the block number                                                                                                                                                
-    #value is a list of inodeInfo classes                                                                                                                                   
-    allocatedBlocks = {}
-
-    for row in csvFile:
-        if (row[0] == "BFREE"):
-            freeBlocks.add(int(row[1]))
-        if (row[0] == "INODE"):
-            for i in range (12, 24):
-                if (allocatedBlocks.has_key(int(row[i])) == False):
-                    newInodeInfo = inodeInfo()
-                    newInodeInfo.inode = int(row[1])
-                    newInodeInfo.indirection.append(0)
-                    newInodeInfo.offsets.append(12-i)
-                    allocatedBlocks[int(row[i])] = newInodeInfo
-                else:
-                    allocatedBlocks[int(row[i])].offsets.append(12-i)
-                    allocatedBlocks[int(row[i])].indirection.append(0)
-        if (row[0] == "INDIRECT"):
-            print row
-            indir = int(row[2])
-            if (indir == 1):
-                offset = row[3]
-            if (indir ==  2):
-                offset = 12+256
-            if (indir == 3):
-                offset = 12 + 256 + 256
-            if (allocatedBlocks.has_key(int(row[4])) == False):
-                newInodeInfo = inodeInfo()
-                newInodeInfo.inode = int(row[1])
-                newInodeInfo.indirection.append(indir)
-                newInodeInfo.offsets.append(offset)
-                allocatedBlocks[int(row[4])] = newInodeInfo
-            else:
-                allocatedBlocks[int(row[4])].indirection.append(indir)
-                allocatedBlocks[int(row[4])].offsets.append(offset)
 
     #first determine legal blocks
     inodeSize = -1
@@ -75,22 +38,33 @@ def block_consistency(csvFile):
             inodeTable = int(row[8])
 
     startOfDataBlocks = inodeTable + (totalInodes * inodeSize / blockSize)
-    print("total blocks: {}".format(totalBlocks))
 
-    # find invalid and reserved blocks
+    freeBlocks = set([])
+
+    #key is the block number                                                                                                                                                
+    #value is a list of classes
+    allocatedBlocks = {}
+
     for row in csvFile:
+        if (row[0] == "BFREE"):
+            freeBlocks.add(int(row[1]))
         if (row[0] == "INODE"):
-            for i in range (12, 23):
+            for i in range (12, 24):
                 blockNum = int(row[i])
                 if (blockNum != 0):
-                    print(blockNum)
                     if (blockNum < 0 or blockNum > (totalBlocks-1)):
                         print("INVALID BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                     if (blockNum < endOfInodeTable):
                         print ("RESERVED BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+                    newInodeInfo = inodeInfo()
+                    newInodeInfo.inode = int(row[1])
+                    newInodeInfo.indirection = 0
+                    newInodeInfo.offsets = 12-i
+                    if (allocatedBlocks.has_key(blockNum) == False):
+                        allocatedBlocks[blockNum] = [newInodeInfo]
+                        allocatedBlocks[blockNum].append(newInodeInfo)
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
-            print(blockNum)
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
                 if (row[2] == "1"):
                     print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
@@ -104,8 +78,23 @@ def block_consistency(csvFile):
                 if (row[2] == "2"):
                     print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
                 if (row[2] == "3"):
-                    print("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
-                
+                    print("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
+            indir = int(row[2])
+            if (indir == 1):
+                offset = row[3]
+            if (indir ==  2):
+                offset = 12+256
+            if (indir == 3):
+                offset = 12 + 256 + 256
+            newInodeInfo = inodeInfo()
+            newInodeInfo.inode = int(row[1])
+            newInodeInfo.indirection = indir
+            newInodeInfo.offsets = offset
+            blockNum = int(row[5])
+            if (allocatedBlocks.has_key(blockNum) == False):
+                allocatedBlocks[blockNum] = [newInodeInfo]
+            allocatedBlocks[blockNum].append(newInodeInfo)
+                 
 
 def main():
     if len(sys.argv) != 2:
