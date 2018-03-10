@@ -97,6 +97,14 @@ def block_consistency(csvFile):
                 if (allocatedBlocks.has_key(blockNum) == False):
                     allocatedBlocks[blockNum] = [newInodeInfo]
                 allocatedBlocks[blockNum].append(newInodeInfo)
+
+    # allocated and unreferenced blocks
+    for i in range(totalBlocks):
+        if i in freeBlocks and allocatedBlocks.has_key(i):
+            print("ALLOCATED BLOCK {} ON FREELIST".format(i);
+        if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
+            print("UNREFERENCED BLOCK {}".format(i));
+            
                  
 
 def main():
