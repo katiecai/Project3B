@@ -21,12 +21,18 @@ class inodeInfo:
 
 
 def inode_allocation(csvFile):
+    totalInodes = -1
+    firstInode = -1
+
     freeInodes = set([])
     #key is the inode number
     #value is class
     allocatedInodes = {}
 
     for row in csvFile:
+        if (row[0] == "SUPERBLOCK"):
+            totalInodes = int(row[2])
+            firstInode = int(row[7])
         if (row[0] == "IFREE"):
             freeInodes.add(int(row[1]));
         if (row[0] == "INODE"):
@@ -35,10 +41,65 @@ def inode_allocation(csvFile):
                 newInodeInfo = inodeInfo()
                 newInodeInfo.isValid = 1
                 newInodeInfo.fileType = row[2]
-                newInodeInfo.linkCount = int(row[6])
+                newInodeInfo.inodeLinkCount = int(row[6])
                 allocatedInodes[inodeNum] = newInodeInfo
             else:
-                allocatedInodes[inodeNum].inodeLinkCount = int(row[6])               
+                allocatedInodes[inodeNum].inodeLinkCount = int(row[6])
+        if (row[0] == "DIRENT"):
+            inodeNum = int(row[1])
+            if (allocatedInodes.has_key(inodeNum) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.realLinkCount = 1
+                allocatedInodes[inodeNum] = newInodeInfo
+            else:
+                allocatedInodes[inodeNum].realLinkCount = allocatedInodes[inodeNum].realLinkCount + 1
+                
+
+    #root directory special case check
+    if 2 in freeInodes and allocatedInodes.has_key(2):
+        print("ALLOCATED INODE 2 ON FREELIST")
+    if 2 in freeInodes and allocatedInodes.has_key(2) == False:
+        print("UNALLOCATED INODE 2 NOT ON FREELIST")
+    if allocatedInodes[2].realLinkCount != allocatedInodes[2].inodeLinkCount:
+        print("INODE 2 HAS {} LINKS BUT LINKCOUNT IS {}".format(allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
+
+    for i in range(firstInode, totalInodes+1):
+        if allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 0:
+            print ("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if i in freeInodes and allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 1:
+            print("ALLOCATATED INODE {} ON FREELIST".format(i))
+        if i not in freeInodes and allocatedInodes.has_key(i) == False:
+            print("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if allocatedInodes.has_key(i) == True:
+            if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
+              print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
+
+    directoryMap = {}
+
+    for row in csvFile:
+        # lets also check for unallocated inodes here                                                                                                                                   
+        if (row[0] == "DIRENT"):
+            childInode = int(row[3])
+            parentInode = int(row[1])
+            inodeName =row[6]
+
+            if (childInode < 1 or childInode > totalInodes):
+                print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
+            # unallocated inode
+            if (childInode not in freeInodes and allocatedInodes.has_key(childInode) == False):
+                print("DIRECTORY INODE {} NAME '{}' UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
+            if (inodeName != "." and inodeName != ".."):
+                if (directoryMap.has_key(childInode) == False):
+                    directoryMap[childInode] = parentInode
+
+    for row in csvFile:
+        if (row[0] == "DIRENT"):
+            if (row[6] == ".." or row[6] == "."):
+                # parent should be itself for . and ..
+                childInode = int(row[3])
+                if (childInode != directoryMap[childInode]):
+                    print("DIRECTORY INODE {} NAME '{}' LINK TO INODE {} SHOULD BE {}".format(childInode, row[6], directoryMap[childInode], childInode))
+
 
 def block_consistency(csvFile):
 
