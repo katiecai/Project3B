@@ -8,10 +8,35 @@
 import csv
 import sys
 
-class inodeInfo:
+class blockInfo:
     offsets = -1
     inode = -1
     indirection = -1
+
+class inodeInfo:
+    isValid = 0
+    fileType = '?'
+    inodeLinkCount = -1
+    realLinkCount = -1
+
+
+def inode_allocation(csvFile):
+    freeInodes = set([])
+    #key is the inode number
+    #value is class
+    allocatedInodes = {}
+
+    for row in csvFile:
+        if (row[0] == "IFREE"):
+            freeInodes.add(int(row[1]));
+        if (row[0] == "INODE"):
+            inodeNum = int(row[1])
+            newInodeInfo = inodeInfo()
+            newInodeInfo.isValid = 1
+            newInodeInfo.fileType = row[2]
+            newInodeInfo.linkCount = row[6]
+            if (allocatedInodes.has_key(inodeNum) == False):
+                allocatedInodes[inodeNum] = newInodeInfo
 
 def block_consistency(csvFile):
 
@@ -40,11 +65,11 @@ def block_consistency(csvFile):
     startOfDataBlocks = inodeTable + (totalInodes * inodeSize / blockSize)
 
     freeBlocks = set([])
-
     #key is the block number                                                                                                                                                
     #value is a list of classes
     allocatedBlocks = {}
 
+    #CREATING DATA STRUCTURES
     for row in csvFile:
         if (row[0] == "BFREE"):
             freeBlocks.add(int(row[1]))
@@ -71,10 +96,9 @@ def block_consistency(csvFile):
                             print ("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256))
                         if (i == 26):
                             print ("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256*256 + 256))
-
                     else:
-                        newInodeInfo = inodeInfo()
-                        newInodeInfo.inode = int(row[1])
+                        newBlockInfo = blockInfo()
+                        newBlockInfo.inode = int(row[1])
                         if (i < 24):
                             indir = 0
                             offset_to_add = offset
@@ -87,12 +111,12 @@ def block_consistency(csvFile):
                         if (i == 26):
                             indir = 3
                             offset_to_add = offset + 12 + 256 + 256 * 256
-                        newInodeInfo.indirection = indir
-                        newInodeInfo.offsets = offset_to_add
+                        newBlockInfo.indirection = indir
+                        newBlockInfo.offsets = offset_to_add
                         if (allocatedBlocks.has_key(blockNum) == False):
-                            allocatedBlocks[blockNum] = [newInodeInfo]                            
+                            allocatedBlocks[blockNum] = [newBlockInfo]                            
                         else:
-                            allocatedBlocks[blockNum].append(newInodeInfo)
+                            allocatedBlocks[blockNum].append(newBlockInfo)
                     offset = offset + 1
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
@@ -119,15 +143,15 @@ def block_consistency(csvFile):
                     offset = row[3]
                 if (indir == 3):
                     offset = row[3]
-                newInodeInfo = inodeInfo()
-                newInodeInfo.inode = int(row[1])
-                newInodeInfo.indirection = indir
-                newInodeInfo.offsets = offset
+                newBlockInfo = blockInfo()
+                newBlockInfo.inode = int(row[1])
+                newBlockInfo.indirection = indir
+                newBlockInfo.offsets = offset
                 blockNum = int(row[5])
                 if (allocatedBlocks.has_key(blockNum) == False):
-                    allocatedBlocks[blockNum] = [newInodeInfo]
+                    allocatedBlocks[blockNum] = [newBlockInfo]
                 else:
-                    allocatedBlocks[blockNum].append(newInodeInfo)
+                    allocatedBlocks[blockNum].append(newBlockInfo)
 
     # allocated and unreferenced blocks
     for i in range(startOfDataBlocks, totalBlocks):
@@ -135,6 +159,7 @@ def block_consistency(csvFile):
             print("ALLOCATED BLOCK {} ON FREELIST".format(i))
         if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
             print("UNREFERENCED BLOCK {}".format(i)) 
+        # checking for duplicates
         if (allocatedBlocks.has_key(i) == True):
             if (len(allocatedBlocks[i]) > 1):
                 for j in range(len(allocatedBlocks[i])):
@@ -162,6 +187,7 @@ def main():
             csvFile.append(row)
         
     block_consistency(csvFile)
+    inode_allocation(csvFile)
 
 if __name__ == "__main__":
     main()
