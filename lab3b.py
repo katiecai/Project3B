@@ -31,12 +31,14 @@ def inode_allocation(csvFile):
             freeInodes.add(int(row[1]));
         if (row[0] == "INODE"):
             inodeNum = int(row[1])
-            newInodeInfo = inodeInfo()
-            newInodeInfo.isValid = 1
-            newInodeInfo.fileType = row[2]
-            newInodeInfo.linkCount = row[6]
             if (allocatedInodes.has_key(inodeNum) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.isValid = 1
+                newInodeInfo.fileType = row[2]
+                newInodeInfo.linkCount = int(row[6])
                 allocatedInodes[inodeNum] = newInodeInfo
+            else:
+                allocatedInodes[inodeNum].inodeLinkCount = int(row[6])               
 
 def block_consistency(csvFile):
 
@@ -188,6 +190,7 @@ def main():
         
     block_consistency(csvFile)
     inode_allocation(csvFile)
+    
 
 if __name__ == "__main__":
     main()
