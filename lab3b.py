@@ -56,21 +56,6 @@ def inode_allocation(csvFile):
             else:
                 allocatedInodes[inodeNum].realLinkCount = allocatedInodes[inodeNum].realLinkCount + 1
                 
-    for row in csvFile:
-        if (row == "DIRENT"):
-            childInode = int(row[3])
-            parentInode = int(row[1])
-            inodeName =row[6]
-            #invalid inode
-            if (childInode < 1 or childInode > totalInodes):
-                print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
-            # unallocated inode
-            if (childInode not in freeInodes and allocatedInodes.has_key(childInode) == False):
-                print("DIRECTORY INODE {} NAME '{}' UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
-            if (inodeName != "." and inodeName != ".."):
-                if (directoryMap.has_key(childInode) == False):
-                    directoryMap[childInode] = parentInode
-
     #root directory special case check
     if 2 in freeInodes and allocatedInodes.has_key(2):
         print("ALLOCATED INODE 2 ON FREELIST")
@@ -90,14 +75,32 @@ def inode_allocation(csvFile):
             if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
                 print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[i].realLinkCount, allocatedInodes[i].inodeLinkCount))
 
+    for row in csvFile:
+        if (row == "DIRENT"):
+            childInode = int(row[3])
+            parentInode = int(row[1])
+            inodeName =row[6]
+            #invalid inode
+            if (childInode < 1 or childInode > totalInodes):
+                print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
+            # unallocated inode
+            if (childInode not in freeInodes and allocatedInodes.has_key(childInode) == False):
+                print("DIRECTORY INODE {} NAME '{}' UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
+            if (inodeName != "." and inodeName != ".."):
+                if (directoryMap.has_key(childInode) == False):
+                    directoryMap[childInode] = parentInode
 
     for row in csvFile:
         if (row[0] == "DIRENT"):
-            if (row[6] == ".." or row[6] == "."):
-                # parent should be itself for . and ..
-                childInode = int(row[3])
-                if (childInode != directoryMap[childInode]):
-                    print("DIRECTORY INODE {} NAME '{}' LINK TO INODE {} SHOULD BE {}".format(childInode, row[6], directoryMap[childInode], childInode))
+            childInode = int(row[3])
+            parentInode = int(row[1])
+
+            if (row[6] == "'.'"):
+                if (childInode != parentInode):
+                    print("DIRECTORY INODE {} NAME {} LINK TO INODE {} SHOULD BE {}".format(parentInode, row[6], childInode, parentInode))
+            if (row[6] == "'..'"):
+                if (directoryMap[parentInode] != childInode):
+                    print("DIRECTORY INODE {} NAME {} LINK TO INODE {} SHOULD BE {}".format(parentInode, row[6], childInode, parentInode))
 
 
 def block_consistency(csvFile):
@@ -182,7 +185,6 @@ def block_consistency(csvFile):
                     offset = offset + 1
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
-#            print("checking from indirect blocks, block number is {}".format(blockNum))
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
                 if (row[2] == "1"):
                     print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
