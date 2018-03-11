@@ -16,8 +16,8 @@ class blockInfo:
 class inodeInfo:
     isValid = 0
     fileType = '?'
-    inodeLinkCount = -1
-    realLinkCount = -1
+    inodeLinkCount = 0
+    realLinkCount = 0
 
 
 def inode_allocation(csvFile):
@@ -28,6 +28,7 @@ def inode_allocation(csvFile):
     #key is the inode number
     #value is class
     allocatedInodes = {}
+    directoryMap = {}
 
     for row in csvFile:
         if (row[0] == "SUPERBLOCK"):
@@ -44,9 +45,10 @@ def inode_allocation(csvFile):
                 newInodeInfo.inodeLinkCount = int(row[6])
                 allocatedInodes[inodeNum] = newInodeInfo
             else:
+                allocatedInodes[inodeNum].isValid = 1
                 allocatedInodes[inodeNum].inodeLinkCount = int(row[6])
         if (row[0] == "DIRENT"):
-            inodeNum = int(row[1])
+            inodeNum = int(row[3])
             if (allocatedInodes.has_key(inodeNum) == False):
                 newInodeInfo = inodeInfo()
                 newInodeInfo.realLinkCount = 1
@@ -54,35 +56,12 @@ def inode_allocation(csvFile):
             else:
                 allocatedInodes[inodeNum].realLinkCount = allocatedInodes[inodeNum].realLinkCount + 1
                 
-
-    #root directory special case check
-    if 2 in freeInodes and allocatedInodes.has_key(2):
-        print("ALLOCATED INODE 2 ON FREELIST")
-    if 2 in freeInodes and allocatedInodes.has_key(2) == False:
-        print("UNALLOCATED INODE 2 NOT ON FREELIST")
-    if allocatedInodes[2].realLinkCount != allocatedInodes[2].inodeLinkCount:
-        print("INODE 2 HAS {} LINKS BUT LINKCOUNT IS {}".format(allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
-
-    for i in range(firstInode, totalInodes+1):
-        if allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 0:
-            print ("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
-        if i in freeInodes and allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 1:
-            print("ALLOCATATED INODE {} ON FREELIST".format(i))
-        if i not in freeInodes and allocatedInodes.has_key(i) == False:
-            print("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
-        if allocatedInodes.has_key(i) == True:
-            if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
-              print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
-
-    directoryMap = {}
-
     for row in csvFile:
-        # lets also check for unallocated inodes here                                                                                                                                   
-        if (row[0] == "DIRENT"):
+        if (row == "DIRENT"):
             childInode = int(row[3])
             parentInode = int(row[1])
             inodeName =row[6]
-
+            #invalid inode
             if (childInode < 1 or childInode > totalInodes):
                 print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
             # unallocated inode
@@ -91,6 +70,26 @@ def inode_allocation(csvFile):
             if (inodeName != "." and inodeName != ".."):
                 if (directoryMap.has_key(childInode) == False):
                     directoryMap[childInode] = parentInode
+
+    #root directory special case check
+    if 2 in freeInodes and allocatedInodes.has_key(2):
+        print("ALLOCATED INODE 2 ON FREELIST")
+    if 2 in freeInodes and allocatedInodes.has_key(2) == False:
+        print("UNALLOCATED INODE 2 NOT ON FREELIST")
+    if allocatedInodes[2].realLinkCount != allocatedInodes[2].inodeLinkCount:
+        print("INODE 2 HAS {} LINKS BUT LINKCOUNT IS {}".format(allocatedInodes[2].realLinkCount, allocatedInodes[2].inodeLinkCount))
+
+    for i in range(firstInode, totalInodes+1):
+        if allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 0:
+            print ("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if i in freeInodes and allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 1:
+            print("ALLOCATATED INODE {} ON FREELIST".format(i))
+        if i not in freeInodes and allocatedInodes.has_key(i) == False:
+            print("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if allocatedInodes.has_key(i) == True and allocatedInodes[i].isValid == 1:
+            if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
+                print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[i].realLinkCount, allocatedInodes[i].inodeLinkCount))
+
 
     for row in csvFile:
         if (row[0] == "DIRENT"):
@@ -183,7 +182,7 @@ def block_consistency(csvFile):
                     offset = offset + 1
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
-            print("checking from indirect blocks, block number is {}".format(blockNum))
+#            print("checking from indirect blocks, block number is {}".format(blockNum))
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
                 if (row[2] == "1"):
                     print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], row[3]))
