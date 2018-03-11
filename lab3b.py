@@ -8,10 +8,78 @@
 import csv
 import sys
 
-class inodeInfo:
+class blockInfo:
     offsets = -1
     inode = -1
     indirection = -1
+
+class inodeInfo:
+    isValid = 0
+    fileType = '?'
+    inodeLinkCount = -1
+    realLinkCount = -1
+
+
+def inode_allocation(csvFile):
+    totalInodes = -1
+    firstInode = -1
+
+    freeInodes = set([])
+    #key is the inode number
+    #value is class
+    allocatedInodes = {}
+
+    for row in csvFile:
+        if (row[0] == "SUPERBLOCK"):
+            totalInodes = int(row[2])
+            firstInode = int(row[7])
+        if (row[0] == "IFREE"):
+            freeInodes.add(int(row[1]));
+        if (row[0] == "INODE"):
+            inodeNum = int(row[1])
+            if (allocatedInodes.has_key(inodeNum) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.isValid = 1
+                newInodeInfo.fileType = row[2]
+                newInodeInfo.inodeLinkCount = int(row[6])
+                allocatedInodes[inodeNum] = newInodeInfo
+            else:
+                allocatedInodes[inodeNum].inodeLinkCount = int(row[6])
+        if (row[0] == "DIRENT"):
+            inodeNum = int(row[1])
+            if (allocatedInodes.has_key(inodeNum) == False):
+                newInodeInfo = inodeInfo()
+                newInodeInfo.realLinkCount = 1
+                allocatedInodes[inodeNum] = newInodeInfo
+            else:
+                allocatedInodes[inodeNum].realLinkCount = allocatedInodes[inodeNum].realLinkCount + 1
+                
+
+    #root directory special case check
+    if 2 in freeInodes and allocatedInodes.has_key(2):
+        print("ALLOCATED INODE 2 ON FREELIST")
+    if 2 in freeInodes and allocatedInodes.has_key(2) == False:
+        print("UNALLOCATED INODE 2 NOT ON FREELIST")
+    if allocatedInodes[2].realLinkCount != allocatedInodes[2].inodeLinkCount:
+        print("INODE 2 HAS {} LINKS BUT LINKCOUNT IS {}".format(allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
+
+    for i in range(firstInode, totalInodes+1):
+        if allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 0:
+            print ("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if i in freeInodes and allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 1:
+            print("ALLOCATATED INODE {} ON FREELIST".format(i))
+        if i not in freeInodes and allocatedInodes.has_key(i) == False:
+            print("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+        if allocatedInodes.has_key(i) == True:
+            if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
+              print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
+
+              
+            
+
+
+
+
 
 def block_consistency(csvFile):
 
@@ -40,11 +108,11 @@ def block_consistency(csvFile):
     startOfDataBlocks = inodeTable + (totalInodes * inodeSize / blockSize)
 
     freeBlocks = set([])
-
     #key is the block number                                                                                                                                                
     #value is a list of classes
     allocatedBlocks = {}
 
+    #CREATING DATA STRUCTURES
     for row in csvFile:
         if (row[0] == "BFREE"):
             freeBlocks.add(int(row[1]))
@@ -71,10 +139,9 @@ def block_consistency(csvFile):
                             print ("RESERVED DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256))
                         if (i == 26):
                             print ("RESERVED TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], offset+12+256*256 + 256))
-
                     else:
-                        newInodeInfo = inodeInfo()
-                        newInodeInfo.inode = int(row[1])
+                        newBlockInfo = blockInfo()
+                        newBlockInfo.inode = int(row[1])
                         if (i < 24):
                             indir = 0
                             offset_to_add = offset
@@ -87,12 +154,12 @@ def block_consistency(csvFile):
                         if (i == 26):
                             indir = 3
                             offset_to_add = offset + 12 + 256 + 256 * 256
-                        newInodeInfo.indirection = indir
-                        newInodeInfo.offsets = offset_to_add
+                        newBlockInfo.indirection = indir
+                        newBlockInfo.offsets = offset_to_add
                         if (allocatedBlocks.has_key(blockNum) == False):
-                            allocatedBlocks[blockNum] = [newInodeInfo]                            
+                            allocatedBlocks[blockNum] = [newBlockInfo]                            
                         else:
-                            allocatedBlocks[blockNum].append(newInodeInfo)
+                            allocatedBlocks[blockNum].append(newBlockInfo)
                     offset = offset + 1
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
@@ -120,15 +187,15 @@ def block_consistency(csvFile):
                     offset = row[3]
                 if (indir == 3):
                     offset = row[3]
-                newInodeInfo = inodeInfo()
-                newInodeInfo.inode = int(row[1])
-                newInodeInfo.indirection = indir
-                newInodeInfo.offsets = offset
+                newBlockInfo = blockInfo()
+                newBlockInfo.inode = int(row[1])
+                newBlockInfo.indirection = indir
+                newBlockInfo.offsets = offset
                 blockNum = int(row[5])
                 if (allocatedBlocks.has_key(blockNum) == False):
-                    allocatedBlocks[blockNum] = [newInodeInfo]
+                    allocatedBlocks[blockNum] = [newBlockInfo]
                 else:
-                    allocatedBlocks[blockNum].append(newInodeInfo)
+                    allocatedBlocks[blockNum].append(newBlockInfo)
 
     # allocated and unreferenced blocks
     for i in range(startOfDataBlocks, totalBlocks):
@@ -136,6 +203,7 @@ def block_consistency(csvFile):
             print("ALLOCATED BLOCK {} ON FREELIST".format(i));
         if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
             print("UNREFERENCED BLOCK {}".format(i)) 
+        # checking for duplicates
         if (allocatedBlocks.has_key(i) == True):
             if (len(allocatedBlocks[i]) > 1):
                 for j in range(len(allocatedBlocks[i])):
@@ -162,6 +230,7 @@ def main():
             csvFile.append(row)
         
     block_consistency(csvFile)
+    inode_allocation(csvFile)
 
 if __name__ == "__main__":
     main()
