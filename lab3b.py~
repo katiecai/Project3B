@@ -66,6 +66,7 @@ def block_consistency(csvFile):
                         allocatedBlocks[blockNum].append(newInodeInfo)
         if (row[0] == "INDIRECT"):
             blockNum = int(row[4])
+            print("checking from indirect blocks, block number is {}".format(blockNum))
             if (blockNum < 0 or blockNum > (totalBlocks-1)):
                 if (row[2] == "1"):
                     print("INVALID INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(blockNum, row[1], blockNum*blockSize))
@@ -97,6 +98,16 @@ def block_consistency(csvFile):
                 if (allocatedBlocks.has_key(blockNum) == False):
                     allocatedBlocks[blockNum] = [newInodeInfo]
                 allocatedBlocks[blockNum].append(newInodeInfo)
+
+    # allocated and unreferenced blocks
+    for i in range(startOfDataBlocks, totalBlocks):
+        if allocatedBlocks.has_key(i):
+            print(i)
+        if i in freeBlocks and allocatedBlocks.has_key(i):
+            print("ALLOCATED BLOCK {} ON FREELIST".format(i));
+        if i not in freeBlocks and allocatedBlocks.has_key(i) == False:
+            print("UNREFERENCED BLOCK {}".format(i));
+            
                  
 
 def main():
