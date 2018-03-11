@@ -74,11 +74,31 @@ def inode_allocation(csvFile):
             if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
               print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[2].inodeLinkCount, allocatedInodes[2].realLinkCount))
 
-              
-            
+    directoryMap = {}
 
+    for row in csvFile:
+        # lets also check for unallocated inodes here                                                                                                                                   
+        if (row[0] == "DIRENT"):
+            childInode = int(row[3])
+            parentInode = int(row[1])
+            inodeName =row[6]
 
+            if (childInode < 1 or childInode > totalInodes):
+                print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
+            # unallocated inode
+            if (childInode not in freeInodes and allocatedInodes.has_key(childInode) == False):
+                print("DIRECTORY INODE {} NAME '{}' UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
+            if (inodeName != "." and inodeName != ".."):
+                if (directoryMap.has_key(childInode) == False):
+                    directoryMap[childInode] = parentInode
 
+    for row in csvFile:
+        if (row[0] == "DIRENT"):
+            if (row[6] == ".." or row[6] == "."):
+                # parent should be itself for . and ..
+                childInode = int(row[3])
+                if (childInode != directoryMap[childInode]):
+                    print("DIRECTORY INODE {} NAME '{}' LINK TO INODE {} SHOULD BE {}".format(childInode, row[6], directoryMap[childInode], childInode))
 
 
 def block_consistency(csvFile):
@@ -216,6 +236,7 @@ def block_consistency(csvFile):
                         print("DUPLICATE DOUBLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
                     if (indir == 3):
                         print("DUPLICATE TRIPLE INDIRECT BLOCK {} IN INODE {} AT OFFSET {}".format(i, allocatedBlocks[i][j].inode, allocatedBlocks[i][j].offsets))
+            
 
 def main():
     if len(sys.argv) != 2:
@@ -231,6 +252,7 @@ def main():
         
     block_consistency(csvFile)
     inode_allocation(csvFile)
+    
 
 if __name__ == "__main__":
     main()
