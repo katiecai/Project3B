@@ -28,7 +28,6 @@ def inode_allocation(csvFile):
     #key is the inode number
     #value is class
     allocatedInodes = {}
-    directoryMap = {}
 
     for row in csvFile:
         if (row[0] == "SUPERBLOCK"):
@@ -65,8 +64,6 @@ def inode_allocation(csvFile):
         print("INODE 2 HAS {} LINKS BUT LINKCOUNT IS {}".format(allocatedInodes[2].realLinkCount, allocatedInodes[2].inodeLinkCount))
 
     for i in range(firstInode, totalInodes+1):
-        if allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 0:
-            print ("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
         if i in freeInodes and allocatedInodes.has_key(i) and allocatedInodes[i].isValid == 1:
             print("ALLOCATATED INODE {} ON FREELIST".format(i))
         if i not in freeInodes and allocatedInodes.has_key(i) == False:
@@ -75,17 +72,21 @@ def inode_allocation(csvFile):
             if (allocatedInodes[i].realLinkCount != allocatedInodes[i].inodeLinkCount):
                 print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, allocatedInodes[i].realLinkCount, allocatedInodes[i].inodeLinkCount))
 
+    directoryMap = {}
+
     for row in csvFile:
-        if (row == "DIRENT"):
+        if (row[0] == "DIRENT"):
             childInode = int(row[3])
             parentInode = int(row[1])
             inodeName =row[6]
             #invalid inode
             if (childInode < 1 or childInode > totalInodes):
-                print("DIRECTORY INODE {} NAME '{}' INVALID INODE {}".format(parentInode, inodeName, childInode))
+                print("DIRECTORY INODE {} NAME {} INVALID INODE {}".format(parentInode, inodeName, childInode))
+            elif (allocatedInodes.has_key(childInode) == True and allocatedInodes[childInode].isValid == 0):
+                print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
             # unallocated inode
             if (childInode not in freeInodes and allocatedInodes.has_key(childInode) == False):
-                print("DIRECTORY INODE {} NAME '{}' UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
+                print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(parentInode, inodeName, childInode))
             if (inodeName != "." and inodeName != ".."):
                 if (directoryMap.has_key(childInode) == False):
                     directoryMap[childInode] = parentInode
@@ -94,7 +95,6 @@ def inode_allocation(csvFile):
         if (row[0] == "DIRENT"):
             childInode = int(row[3])
             parentInode = int(row[1])
-
             if (row[6] == "'.'"):
                 if (childInode != parentInode):
                     print("DIRECTORY INODE {} NAME {} LINK TO INODE {} SHOULD BE {}".format(parentInode, row[6], childInode, parentInode))
